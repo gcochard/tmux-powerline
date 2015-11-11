@@ -92,6 +92,8 @@ run_segment() {
 
 	if [[ -n "$count"  && "$count" -gt 0 ]]; then
 		echo "✉ ${count}"
+    elif [[ -n "$count" ]]; then
+		echo "✉ ${count}"
 	fi
 
 	return 0
@@ -106,7 +108,7 @@ __count_apple_mail() {
 __count_gmail() {
 	local tmp_file="${TMUX_POWERLINE_DIR_TEMPORARY}/gmail_count.txt"
 	local tmp_wgetrc="${TMUX_POWERLINE_DIR_TEMPORARY}/tmp_wgetrc.txt"
-	local override_passget="false"	# When true a force reloaded will be done.
+	local override_passget="true"	# When true a force reloaded will be done.
 
 	# Create the cache file if it doesn't exist.
 	if [ ! -f "$tmp_file" ]; then
@@ -122,7 +124,17 @@ __count_gmail() {
 		last_update=$(stat -c "%Y" ${tmp_file})
 	fi
 	if [ "$(( $(date +"%s") - ${last_update} ))" -gt "$interval" ] || [ "$override_passget" == true ]; then
-		if [ -z "$TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_PASSWORD" ]; then # Get password from keychain if it isn't already set.
+        if [ $TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_USE_HELPER == "1" ]; then
+            mail=$(node ${TMUX_POWERLINE_DIR_SEGMENTS}/mailcount_gmail_helper.js)
+            if [ "$mail" != "" ]; then
+                echo $mail > $tmp_file
+            else
+                return 1
+            fi
+            count=$(cat $tmp_file)
+            echo "$count"
+            return 0;
+		elif [ -z "$TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_PASSWORD" ]; then # Get password from keychain if it isn't already set.
 			if shell_is_osx; then
 				__mac_keychain_get_pass "${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_USERNAME}@${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_SERVER}" "$TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_SERVER"
 			else
@@ -138,10 +150,10 @@ __count_gmail() {
 			return 1
 		fi
 
-    	# Hide password from command line (visible with e.g. ps(1)).
-    	echo -e "user=${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_USERNAME}@${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_SERVER}\npassword=${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_PASSWORD}" > "$tmp_wgetrc"
-		mail=$(wget -q -O - https://mail.google.com/a/${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_SERVER}/feed/atom --config "$tmp_wgetrc" | grep -E -m 1 -o '<fullcount>(.*)</fullcount>' | sed -e 's,.*<fullcount>\([^<]*\)</fullcount>.*,\1,g')
-		rm "$tmp_wgetrc"
+        # Hide password from command line (visible with e.g. ps(1)).
+        echo -e "user=${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_USERNAME}@${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_SERVER}\npassword=${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_PASSWORD}" > "$tmp_wgetrc"
+        mail=$(wget -q -O - https://mail.google.com/a/${TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_SERVER}/feed/atom --config "$tmp_wgetrc" | grep -E -m 1 -o '<fullcount>(.*)</fullcount>' | sed -e 's,.*<fullcount>\([^<]*\)</fullcount>.*,\1,g')
+        rm "$tmp_wgetrc"
 
 		if [ "$mail" != "" ]; then
 			echo $mail > $tmp_file

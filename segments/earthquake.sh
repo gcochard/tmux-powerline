@@ -15,7 +15,7 @@ TMUX_POWERLINE_SEG_EARTHQUAKE_MIN_MAGNITUDE_DEFAULT='3'
 
 generate_segmentrc() {
 	read -d '' rccontents  << EORC
-# The data provider to use. Currently only "goo" is supported.
+# The data provider to use. Currently only "goo" or "usgs" is supported.
 export TMUX_POWERLINE_SEG_EARTHQUAKE_DATA_PROVIDER="${TMUX_POWERLINE_SEG_EARTHQUAKE_DATA_PROVIDER_DEFAULT}"
 # How often to update the earthquake data in seconds.
 # Note: This is not an early warning detector, use this
@@ -39,6 +39,7 @@ run_segment() {
 	local earthquake
 	case "$TMUX_POWERLINE_SEG_EARTHQUAKE_DATA_PROVIDER" in
 		"goo") earthquake=$(__goo_earthquake) ;;
+		"usgs") earthquake=$(__usgs_earthquake) ;;
 		*)
 			echo "Unknown earthquake-information provider [${$TMUX_POWERLINE_SEG_EARTHQUAKE_DATA_PROVIDER}]";
 			return 1
@@ -63,6 +64,52 @@ __process_settings() {
 	fi
 	if [ -z "$TMUX_POWERLINE_SEG_EARTHQUAKE_MIN_MAGNITUDE" ]; then
 		export TMUX_POWERLINE_SEG_EARTHQUAKE_MIN_MAGNITUDE="${TMUX_POWERLINE_SEG_EARTHQUAKE_MIN_MAGNITUDE_DEFAULT}"
+	fi
+}
+
+__usgs_earthquake() {
+	location=""
+	magnitude=""
+	magnitude_number=""
+	timestamp=""
+	if [[ -f "$tmp_file" ]]; then
+		if shell_is_osx || shell_is_bsd; then
+			last_update=$(stat -f "%m" ${tmp_file})
+		elif shell_is_linux; then
+			last_update=$(stat -c "%Y" ${tmp_file})
+		fi
+		time_now=$(date +%s)
+
+		up_to_date=$(echo "(${time_now}-${last_update}) < ${update_period}" | bc)
+		if [ "$up_to_date" -eq 1 ]; then
+			__read_tmp_file
+		fi
+	fi
+
+	if [ -z "$magnitude" ]; then
+        echo ""
+		# get the rss file, convert encoding to UTF-8, then delete windows carriage-returns
+		earthquake_data=$(node ${TMUX_POWERLINE_DIR_SEGMENTS}/earthquake_usgs_helper.js $TMUX_POWERLINE_SEG_EARTHQUAKE_MIN_MAGNITUDE)
+		if [ "$?" -eq "0" ]; then
+			# pluck our data
+			location=$(echo $earthquake_data | head -1)
+			magnitude=$(echo $earthquake_data | head -2 | tail -1)
+			timestamp=$(echo $earthquake_data | tail -1)
+
+			echo "$earthquake_data" > $tmp_file
+		elif [ -f "$tmp_file" ]; then
+			__read_tmp_file
+		fi
+	fi
+	__convert_timestamp_to_fmt
+
+	# extract the numerical portion of magnitude
+    magnitude_number=$(echo $magnitude | awk -F . '{print $1}')
+
+	if [ -n "$magnitude" ]; then
+		if __check_alert_time_window && __check_min_magnitude ; then
+			echo "${location}${timestamp_fmt}:#[fg=colour0]${magnitude}"
+		fi
 	fi
 }
 

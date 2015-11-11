@@ -62,11 +62,12 @@ Requirements for some segments. You only need to fulfill the requirements for th
 * `wan_ip.sh`, `now_playing.sh` (last.fm), `weather_yahoo.sh`: curl, bc
 * `now_playing.sh` (mpd) : [libmpdclient](http://sourceforge.net/projects/musicpd/files/libmpdclient/)
 * `xkb_layout.sh`: X11, XKB
-* `mailcount.sh` (gmail): wget, (mailcheck): [mailcheck](http://packages.debian.org/sid/mailcheck).
+* `mailcount.sh` (gmail): wget, (gmail via REST API): nodejs and npm, (mailcheck): [mailcheck](http://packages.debian.org/sid/mailcheck).
 * `ifstat.sh`: ifstat (there is a simpler segment not using ifstat but samples /sys/class/net)
 * `tmux_mem_cpu_load.sh`: [tmux-mem-cpu-load](https://github.com/thewtex/tmux-mem-cpu-load)
 * `rainbarf.sh`: [rainbarf](https://github.com/creaktive/rainbarf)
 * `weather.sh`: GNU `grep` with Perl regexp enabled (FreeBSD specific)
+* `earthquake.sh`: If using `usgs` as the service: nodejs and npm
 
 ## OS X specific requirements
 
@@ -131,6 +132,8 @@ Some segments e.g. cwd and cvs_branch needs to find the current working director
 ```bash
 PS1="$PS1"'$([ -n "$TMUX" ] && tmux setenv TMUXPWD_$(tmux display -p "#D" | tr -d %) "$PWD")'
 ```
+
+To use segments that require nodejs helpers, you must cd to the `segments` directory and run `npm install`. This will install nodejs dependencies required for those helpers. Currently the helpers are only used for gmail unread count via gmail's REST API, and the USGS earthquake feed.
 
 # Configuration
 

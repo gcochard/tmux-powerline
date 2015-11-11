@@ -24,6 +24,10 @@ TMUX_POWERLINE_DEFAULT_RIGHTSIDE_SEPARATOR=${TMUX_POWERLINE_DEFAULT_RIGHTSIDE_SE
 if [ -z $TMUX_POWERLINE_LEFT_STATUS_SEGMENTS ]; then
 	TMUX_POWERLINE_LEFT_STATUS_SEGMENTS=(
 		"tmux_session_info 148 234" \
+		"date_day 235 136" \
+		"date 235 136 ${TMUX_POWERLINE_SEPARATOR_RIGHT_THIN}" \
+		"time 235 136 ${TMUX_POWERLINE_SEPARATOR_RIGHT_THIN}" \
+		"utc_time 235 136" \
 		"hostname 33 0" \
 		#"ifstat 30 255" \
 		#"ifstat_sys 30 255" \
@@ -39,7 +43,7 @@ fi
 
 if [ -z $TMUX_POWERLINE_RIGHT_STATUS_SEGMENTS ]; then
 	TMUX_POWERLINE_RIGHT_STATUS_SEGMENTS=(
-		#"earthquake 3 0" \
+		"earthquake 3 0" \
 		"pwd 89 211" \
 		"mailcount 9 255" \
 		"now_playing 234 37" \
@@ -50,9 +54,5 @@ if [ -z $TMUX_POWERLINE_RIGHT_STATUS_SEGMENTS ]; then
 		"weather 37 255" \
 		#"rainbarf 0 0" \
 		#"xkb_layout 125 117" \
-		"date_day 235 136" \
-		"date 235 136 ${TMUX_POWERLINE_SEPARATOR_LEFT_THIN}" \
-		"time 235 136 ${TMUX_POWERLINE_SEPARATOR_LEFT_THIN}" \
-		#"utc_time 235 136 ${TMUX_POWERLINE_SEPARATOR_LEFT_THIN}" \
 	)
 fi

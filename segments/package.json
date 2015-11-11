@@ -1,0 +1,16 @@
+{
+  "name": "segment-helpers",
+  "version": "1.0.0",
+  "description": "",
+  "main": "earthquake_usgs_helper.js",
+  "dependencies": {
+    "feed-read": "^0.0.1",
+    "googleapis": "^2.1.6"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
