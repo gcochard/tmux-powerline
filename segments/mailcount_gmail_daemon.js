@@ -2,22 +2,55 @@ var fs = require('fs');
 var readline = require('readline');
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
+var reissue = require('reissue');
 
 var SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
     process.env.USERPROFILE) + '/.credentials/';
 var TOKEN_PATH = TOKEN_DIR + 'gmail-nodejs-quickstart.json';
+var PIDFILE = 'gmail.pidfile';
+var UPDFILE = 'gmail.latest';
+var INTERVAL = 1000;
+var clone = false;
+
+// Set up pidfile, single instance check, and exit handler
+if(fs.existsSync(PIDFILE)){
+    console.error('Error, daemon already running');
+    clone = true;
+    process.exit(1);
+}
+fs.writeFileSync(PIDFILE,process.pid);
+process.on('exit',function(){
+    // only delete pidfile if this is the first instance running otherwise,
+    // we'll delete it and the next time another instance is spawned, it will
+    // be a dupe
+    if(!clone){
+        fs.unlinkSync(PIDFILE);
+        fs.unlinkSync(UPDFILE);
+    }
+});
+
+process.on('SIGINT',process.exit);
+process.on('SIGTERM',process.exit);
 
 // Load client secrets from a local file.
-fs.readFile(TOKEN_DIR + 'client_secret.json', function processClientSecrets(err, content) {
-  if (err) {
-    console.log('Error loading client secret file: ' + err);
-    return;
-  }
+var secret = JSON.parse(fs.readFileSync(TOKEN_DIR + 'client_secret.json'));
+(function processClientSecrets(content) {
   // Authorize a client with the loaded credentials, then call the
   // Gmail API.
-  authorize(JSON.parse(content), countUnreadInLabel.bind(null,'INBOX'));
-});
+  var handler = reissue.create({
+      func: function(cb){
+          authorize(content, function(err,auth){
+              if(err){
+                  cb(err);
+              }
+              countUnreadInLabel('INBOX',auth,cb);
+          });
+      },
+      interval: INTERVAL
+  });
+  handler.start(1);
+}(secret));
 
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
@@ -39,7 +72,7 @@ function authorize(credentials, callback) {
       getNewToken(oauth2Client, callback);
     } else {
       oauth2Client.credentials = JSON.parse(token);
-      callback(oauth2Client);
+      setTimeout(callback.bind(null,null,oauth2Client),0);
     }
   });
 }
@@ -67,11 +100,11 @@ function getNewToken(oauth2Client, callback) {
     oauth2Client.getToken(code, function(err, token) {
       if (err) {
         console.log('Error while trying to retrieve access token', err);
-        return;
+        return callback(err);
       }
       oauth2Client.credentials = token;
       storeToken(token);
-      callback(oauth2Client);
+      return callback(null, oauth2Client);
     });
   });
 }
@@ -125,8 +158,9 @@ function listLabels(auth) {
  * Lists the labels in the user's account.
  *
  * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
+ * @param {Function} cb the callback
  */
-function countUnreadInLabel(label, auth) {
+function countUnreadInLabel(label, auth, cb) {
   var gmail = google.gmail('v1');
   gmail.users.labels.get({
     auth: auth,
@@ -134,10 +168,12 @@ function countUnreadInLabel(label, auth) {
     userId: 'me',
   }, function(err, response) {
     if (err) {
-      console.log('The API returned an error: ' + err);
-      return;
+      console.error('The API returned an error: ' + err);
+      return cb(err);
     }
     //console.log("threads: "+response.threadsUnread+', messages: '+response.messagesUnread);
-    console.log(response.threadsUnread);
+    fs.writeFileSync(UPDFILE,response.threadsUnread);
+    //console.log(response.threadsUnread);
+    cb(null,response.threadsUnread);
   });
 }

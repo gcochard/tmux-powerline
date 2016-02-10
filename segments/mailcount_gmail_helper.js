@@ -1,143 +1,34 @@
 var fs = require('fs');
-var readline = require('readline');
-var google = require('googleapis');
-var googleAuth = require('google-auth-library');
+var cp = require('child_process');
+var pj = require('path').join;
+var DIR = __dirname;
+var PIDFILE = pj(DIR,'gmail.pidfile');
+var UPDFILE = pj(DIR,'gmail.latest');
 
-var SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
-var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
-    process.env.USERPROFILE) + '/.credentials/';
-var TOKEN_PATH = TOKEN_DIR + 'gmail-nodejs-quickstart.json';
-
-// Load client secrets from a local file.
-fs.readFile(TOKEN_DIR + 'client_secret.json', function processClientSecrets(err, content) {
-  if (err) {
-    console.log('Error loading client secret file: ' + err);
-    return;
-  }
-  // Authorize a client with the loaded credentials, then call the
-  // Gmail API.
-  authorize(JSON.parse(content), countUnreadInLabel.bind(null,'INBOX'));
-});
-
-/**
- * Create an OAuth2 client with the given credentials, and then execute the
- * given callback function.
- *
- * @param {Object} credentials The authorization client credentials.
- * @param {function} callback The callback to call with the authorized client.
- */
-function authorize(credentials, callback) {
-  var clientSecret = credentials.installed.client_secret;
-  var clientId = credentials.installed.client_id;
-  var redirectUrl = credentials.installed.redirect_uris[0];
-  var auth = new googleAuth();
-  var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
-
-  // Check if we have previously stored a token.
-  fs.readFile(TOKEN_PATH, function(err, token) {
-    if (err) {
-      getNewToken(oauth2Client, callback);
-    } else {
-      oauth2Client.credentials = JSON.parse(token);
-      callback(oauth2Client);
-    }
-  });
+function writeThenExit(){
+    process.stdout.write('\n');
+    process.exit();
 }
 
-/**
- * Get and store new token after prompting for user authorization, and then
- * execute the given callback with the authorized OAuth2 client.
- *
- * @param {google.auth.OAuth2} oauth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback to call with the authorized
- *     client.
- */
-function getNewToken(oauth2Client, callback) {
-  var authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES
-  });
-  console.log('Authorize this app by visiting this url: ', authUrl);
-  var rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-  rl.question('Enter the code from that page here: ', function(code) {
-    rl.close();
-    oauth2Client.getToken(code, function(err, token) {
-      if (err) {
-        console.log('Error while trying to retrieve access token', err);
-        return;
-      }
-      oauth2Client.credentials = token;
-      storeToken(token);
-      callback(oauth2Client);
+function spawnDaemon(){
+    var out = fs.openSync('gmail.log','a');
+    var err = fs.openSync('gmail.err','a');
+    var child = cp.spawn('node',['mailcount_gmail_daemon.js'], {detached: true, stdio: ['ignore', out, err], cwd: __dirname});
+    child.unref();
+    var watcher = fs.watch(__dirname, function(event,filename){
+        //console.log(event, filename);
+        if(filename === 'gmail.latest'){
+            //fs.createReadStream(UPDFILE).pipe(process.stdout).on('end',writeThenExit);
+            console.log(fs.readFileSync(UPDFILE,'utf8'));
+            watcher.close();
+        }
     });
-  });
 }
 
-/**
- * Store token to disk be used in later program executions.
- *
- * @param {Object} token The token to store to disk.
- */
-function storeToken(token) {
-  try {
-    fs.mkdirSync(TOKEN_DIR);
-  } catch (err) {
-    if (err.code != 'EEXIST') {
-      throw err;
-    }
-  }
-  fs.writeFile(TOKEN_PATH, JSON.stringify(token));
-  console.log('Token stored to ' + TOKEN_PATH);
-}
-
-/**
- * Lists the labels in the user's account.
- *
- * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
- */
-function listLabels(auth) {
-  var gmail = google.gmail('v1');
-  gmail.users.labels.list({
-    auth: auth,
-    userId: 'me',
-  }, function(err, response) {
-    if (err) {
-      console.log('The API returned an error: ' + err);
-      return;
-    }
-    var labels = response.labels;
-    if (labels.length == 0) {
-      console.log('No labels found.');
-    } else {
-      console.log('Labels:');
-      for (var i = 0; i < labels.length; i++) {
-        var label = labels[i];
-        console.log('- %s', label.name);
-      }
-    }
-  });
-}
-
-/**
- * Lists the labels in the user's account.
- *
- * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
- */
-function countUnreadInLabel(label, auth) {
-  var gmail = google.gmail('v1');
-  gmail.users.labels.get({
-    auth: auth,
-    id: label,
-    userId: 'me',
-  }, function(err, response) {
-    if (err) {
-      console.log('The API returned an error: ' + err);
-      return;
-    }
-    //console.log("threads: "+response.threadsUnread+', messages: '+response.messagesUnread);
-    console.log(response.threadsUnread);
-  });
+// spawn the daemon if it's not running
+if(!fs.existsSync(PIDFILE)){
+    spawnDaemon();
+} else {
+    //fs.createReadStream(UPDFILE).pipe(process.stdout).on('end',writeThenExit);
+    console.log(fs.readFileSync(UPDFILE,'utf8'));
 }

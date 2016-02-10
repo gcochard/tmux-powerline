@@ -2,3 +2,7 @@ segments/np_mpd
 segments/xkb_layout
 *.swp
 node_modules
+gmail.*
+usgs.*
+cookie.jar
+bus-cookie.txt

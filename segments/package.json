@@ -5,7 +5,8 @@
   "main": "earthquake_usgs_helper.js",
   "dependencies": {
     "feed-read": "^0.0.1",
-    "googleapis": "^2.1.6"
+    "googleapis": "^2.1.6",
+    "reissue": "^1.0.0"
   },
   "devDependencies": {},
   "scripts": {

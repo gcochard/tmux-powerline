@@ -108,12 +108,10 @@ __count_apple_mail() {
 __count_gmail() {
 	local tmp_file="${TMUX_POWERLINE_DIR_TEMPORARY}/gmail_count.txt"
 	local tmp_wgetrc="${TMUX_POWERLINE_DIR_TEMPORARY}/tmp_wgetrc.txt"
-	local override_passget="true"	# When true a force reloaded will be done.
 
 	# Create the cache file if it doesn't exist.
 	if [ ! -f "$tmp_file" ]; then
 		touch $tmp_file
-		override_passget=true
 	fi
 
 	# Refresh mail count if the tempfile is older than $interval minutes.
@@ -123,7 +121,7 @@ __count_gmail() {
 	elif shell_is_linux; then
 		last_update=$(stat -c "%Y" ${tmp_file})
 	fi
-	if [ "$(( $(date +"%s") - ${last_update} ))" -gt "$interval" ] || [ "$override_passget" == true ]; then
+	if [ "$(( $(date +"%s") - ${last_update} ))" -gt "$interval" ]; then
         if [ $TMUX_POWERLINE_SEG_MAILCOUNT_GMAIL_USE_HELPER == "1" ]; then
             mail=$(node ${TMUX_POWERLINE_DIR_SEGMENTS}/mailcount_gmail_helper.js)
             if [ "$mail" != "" ]; then

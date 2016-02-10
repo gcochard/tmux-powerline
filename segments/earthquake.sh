@@ -5,13 +5,13 @@
 earthquake_symbol='#[fg=colour1]~'
 
 # The update period in seconds.
-update_period=600
+update_period=60
 
-TMUX_POWERLINE_SEG_EARTHQUAKE_DATA_PROVIDER_DEFAULT="goo"
+TMUX_POWERLINE_SEG_EARTHQUAKE_DATA_PROVIDER_DEFAULT="usgs"
 TMUX_POWERLINE_SEG_EARTHQUAKE_UPDATE_PERIOD_DEFAULT="600"
 TMUX_POWERLINE_SEG_EARTHQUAKE_ALERT_TIME_WINDOW_DEFAULT="60"
 TMUX_POWERLINE_SEG_EARTHQUAKE_TIME_FORMAT_DEFAULT='(%H:%M)'
-TMUX_POWERLINE_SEG_EARTHQUAKE_MIN_MAGNITUDE_DEFAULT='3'
+TMUX_POWERLINE_SEG_EARTHQUAKE_MIN_MAGNITUDE_DEFAULT='1'
 
 generate_segmentrc() {
 	read -d '' rccontents  << EORC
@@ -87,14 +87,13 @@ __usgs_earthquake() {
 	fi
 
 	if [ -z "$magnitude" ]; then
-        echo ""
-		# get the rss file, convert encoding to UTF-8, then delete windows carriage-returns
+        echo -n ""
 		earthquake_data=$(node ${TMUX_POWERLINE_DIR_SEGMENTS}/earthquake_usgs_helper.js $TMUX_POWERLINE_SEG_EARTHQUAKE_MIN_MAGNITUDE)
 		if [ "$?" -eq "0" ]; then
 			# pluck our data
-			location=$(echo $earthquake_data | head -1)
-			magnitude=$(echo $earthquake_data | head -2 | tail -1)
-			timestamp=$(echo $earthquake_data | tail -1)
+			location=$(echo "$earthquake_data" | head -1)
+			magnitude=$(echo "$earthquake_data" | head -2 | tail -1)
+			timestamp=$(echo "$earthquake_data" | tail -1)
 
 			echo "$earthquake_data" > $tmp_file
 		elif [ -f "$tmp_file" ]; then
